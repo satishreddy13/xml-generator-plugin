@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin
+  id="XmlGeneratorStep"
+  image="ui/images/XML.svg"
+  category="Transform"
+  description="Generates an XML document per row from mapped fields, with optional XSD or DTD support"
+  name="XML Generator"
+  classname="com.example.pdi.plugin.xmlgenerator.XmlGeneratorStepMeta">
+
+  <lib href="xml-generator-plugin-1.0.0.jar"/>
+
+</plugin>
