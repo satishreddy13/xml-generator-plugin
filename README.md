@@ -188,21 +188,64 @@ The **"XML Generator"** step will appear in the **Transform** category.
 
 ---
 
+## Testing
+
+The project ships a JUnit 5 test suite that exercises the plugin without requiring a running PDI instance. Tests use a `TestableXmlStep` harness that subclasses `XmlGeneratorStep` and replaces the PDI row I/O with in-memory queues.
+
+### Run all tests
+
+```bash
+mvn test
+```
+
+### Test classes and coverage
+
+| Test class | Tests | What is covered |
+|---|---|---|
+| `FieldMappingTest` | 7 | `FieldMapping` POJO: defaults, constructor, setters, NodeType enum, clone |
+| `XmlGeneratorStepMetaTest` | 29 | Meta defaults, XML round-trip (all fields + mappings list), clone, `getFields()`, `check()` |
+| `XmlGeneratorXmlStructureTest` | 8 | XML declaration, root/row element names, same root=row, encoding attribute, empty mappings, multi-row independence |
+| `XmlGeneratorFieldMappingTest` | 12 | ELEMENT / ATTRIBUTE / CDATA node types, xmlName used as tag, empty/null values, multiple mappings, mixed types, unmapped field |
+| `XmlGeneratorParentPathTest` | 7 | Empty path, single-level, two-level, shared parent reuse, attribute on nested parent, mixed depths, leading slash |
+| `XmlGeneratorSchemaTest` | 9 | NONE (no DOCTYPE), XSD validation pass/fail/missing-file, DTD SYSTEM, DTD PUBLIC+SYSTEM, DTD no IDs, DTD root element name |
+| `XmlGeneratorRowProcessingTest` | 9 | Zero rows, 1 row, N rows, XML field last, input fields preserved, output field name, valid XML per row, independent content, well-formed at scale |
+| **Total** | **81** | |
+
+The XSD tests reference `src/test/resources/test-schema.xsd`, which validates the structure:
+```xml
+<root><row><id>…</id><name>…</name></row></root>
+```
+
+---
+
 ## Project Structure
 
 ```
 xml-generator-plugin/
 ├── pom.xml
-└── src/main/
-    ├── java/com/example/pdi/plugin/xmlgenerator/
-    │   ├── FieldMapping.java            ← field mapping data class (source→XML, node type, parent path)
-    │   ├── XmlGeneratorStep.java        ← row processing & XML generation
-    │   ├── XmlGeneratorStepMeta.java    ← plugin metadata & XML persistence
-    │   ├── XmlGeneratorStepData.java    ← runtime data holder
-    │   └── XmlGeneratorStepDialog.java  ← Spoon configuration dialog (3-tab GUI)
-    └── resources/
-        ├── plugin.xml                   ← plugin registration descriptor
-        └── assembly.xml                 ← Maven assembly (builds deployable zip)
+└── src/
+    ├── main/
+    │   ├── java/com/example/pdi/plugin/xmlgenerator/
+    │   │   ├── FieldMapping.java            ← field mapping data class (source→XML, node type, parent path)
+    │   │   ├── XmlGeneratorStep.java        ← row processing & XML generation
+    │   │   ├── XmlGeneratorStepMeta.java    ← plugin metadata & XML persistence
+    │   │   ├── XmlGeneratorStepData.java    ← runtime data holder
+    │   │   └── XmlGeneratorStepDialog.java  ← Spoon configuration dialog (3-tab GUI)
+    │   └── resources/
+    │       ├── plugin.xml                   ← plugin registration descriptor
+    │       └── assembly.xml                 ← Maven assembly (builds deployable zip)
+    └── test/
+        ├── java/com/example/pdi/plugin/xmlgenerator/
+        │   ├── TestableXmlStep.java         ← in-memory harness (no PDI runtime needed)
+        │   ├── FieldMappingTest.java
+        │   ├── XmlGeneratorStepMetaTest.java
+        │   ├── XmlGeneratorXmlStructureTest.java
+        │   ├── XmlGeneratorFieldMappingTest.java
+        │   ├── XmlGeneratorParentPathTest.java
+        │   ├── XmlGeneratorSchemaTest.java
+        │   └── XmlGeneratorRowProcessingTest.java
+        └── resources/
+            └── test-schema.xsd              ← XSD used by schema validation tests
 ```
 
 ---

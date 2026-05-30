@@ -26,8 +26,6 @@ import org.pentaho.di.trans.step.StepInterface;
 import org.pentaho.di.trans.step.StepMeta;
 import org.pentaho.di.trans.step.StepMetaInterface;
 import org.w3c.dom.Document;
-import org.w3c.dom.DOMImplementation;
-import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
@@ -101,18 +99,6 @@ public class XmlGeneratorStep extends BaseStep implements StepInterface {
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document doc = db.newDocument();
 
-        // DOCTYPE declaration for DTD mode
-        if (meta.getSchemaType() == XmlGeneratorStepMeta.SchemaType.DTD) {
-            DOMImplementation domImpl = doc.getImplementation();
-            String pubId = blankToNull(meta.getDtdPublicId());
-            String sysId = blankToNull(meta.getDtdSystemId());
-            if (pubId != null || sysId != null) {
-                DocumentType docType = domImpl.createDocumentType(
-                    meta.getRootElement(), pubId, sysId != null ? sysId : "");
-                doc.appendChild(docType);
-            }
-        }
-
         // Root element
         Element rootEl = doc.createElement(meta.getRootElement());
         doc.appendChild(rootEl);
@@ -157,7 +143,39 @@ public class XmlGeneratorStep extends BaseStep implements StepInterface {
             validateAgainstXsd(doc, meta.getSchemaPath());
         }
 
-        return serialize(doc);
+        String xml = serialize(doc);
+
+        // Inject DOCTYPE declaration for DTD mode after the XML processing instruction.
+        // Done as a string operation because javax.xml.transform.Transformer does not
+        // reliably serialise DocumentType nodes across JDK versions.
+        if (meta.getSchemaType() == XmlGeneratorStepMeta.SchemaType.DTD) {
+            xml = injectDoctype(xml);
+        }
+
+        return xml;
+    }
+
+    /**
+     * Injects a {@code <!DOCTYPE …>} declaration into an already-serialised XML
+     * string immediately after the {@code <?xml … ?>} processing instruction.
+     * If neither Public ID nor System ID is configured, the string is returned unchanged.
+     */
+    private String injectDoctype(String xml) {
+        String pubId = blankToNull(meta.getDtdPublicId());
+        String sysId = blankToNull(meta.getDtdSystemId());
+        if (pubId == null && sysId == null) return xml;
+
+        StringBuilder doctype = new StringBuilder("<!DOCTYPE ").append(meta.getRootElement());
+        if (pubId != null) {
+            doctype.append(" PUBLIC \"").append(pubId)
+                   .append("\" \"").append(sysId != null ? sysId : "").append("\"");
+        } else {
+            doctype.append(" SYSTEM \"").append(sysId).append("\"");
+        }
+        doctype.append(">");
+
+        int pos = xml.indexOf("?>") + 2;
+        return xml.substring(0, pos) + System.lineSeparator() + doctype + xml.substring(pos);
     }
 
     /**
